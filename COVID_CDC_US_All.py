@@ -62,6 +62,7 @@ solution = solve_ivp(f, tSolveSpace, initCond, t_eval=tEvalSpace)
 tlist = solution.t
 ylist = solution.y
 betalist = [beta1*np.exp(beta2*n) for n in tlist]
+
 # If 2 parts, solving second IVP
 if numOfParts>=2:
     beta1*=np.exp(beta2*tEnd1) #Beta2
@@ -76,6 +77,7 @@ if numOfParts>=2:
     tlist=np.concatenate((tlist,tlist2[1:]), axis=None)
     ylist=[np.concatenate((ylist[n],solution2.y[n][1:]), axis=None) for n in range(len(solution2.y))]
     betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution2.t))]
+
 # If 3 parts, solving third IVP
 if numOfParts>=3:
     beta1*=np.exp(beta2*(tEnd2-tEnd1)) #Beta3
@@ -114,24 +116,24 @@ n=len(DataList)
 if numOfParts==1:
     if n>=tEnd1+1:
         tSpaceT=np.linspace(0,tEnd1,tEnd1-0+1)
-        ypoints=DataList[0:tEnd1+1]
+        ypoints=DataList[:tEnd1+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
-        ypoints=DataList[0:n]
+        ypoints=DataList[:n]
 elif numOfParts==2:
     if n>=tEnd2+1:
         tSpaceT=np.linspace(0,tEnd2,tEnd2-0+1)
-        ypoints=DataList[0:tEnd2+1]
+        ypoints=DataList[:tEnd2+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
-        ypoints=DataList[0:n]
+        ypoints=DataList[:n]
 elif numOfParts==3:
     if n>=tEnd3+1:
         tSpaceT=np.linspace(0,tEnd3,tEnd3-0+1)
-        ypoints=DataList[0:tEnd3+1]
+        ypoints=DataList[:tEnd3+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
-        ypoints=DataList[0:n]
+        ypoints=DataList[:n]
 
 plt.plot(tlist.T, irlist, label="Cumulative Predicted Cases (I+R)")
 # Plot formatting
@@ -156,5 +158,13 @@ Sources:
         https://annals.org/aim/fullarticle/2762808/incubation-period-coronavirus-disease-2019-covid-19-from-publicly-reported
     Google Mobility Reports:
         https://www.google.com/covid19/mobility/
-    
+    Data pulled from JHU CSSE:
+        https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_daily_reports/04-04-2020.csv
+    SEIR Equations:
+        https://www.idmod.org/docs/hiv/model-seir.html
+    Date of Stay at Home Mandates by State:
+        https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
+    More Data (Unused):
+        https://www.worldometers.info/coronavirus/country/us/
+
 '''
