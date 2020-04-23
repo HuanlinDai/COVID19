@@ -169,7 +169,7 @@ plt.plot(tSpaceT, ypoints, label="Cumulative Reported Cases (I+R)")
 plt.legend(loc='best')
 axes.set_xlabel('Time since '+StartDate+' (Days)')
 axes.set_ylabel('People')
-axes.set_title('COVID19 Model for US (SEIR, RK4)')
+axes.set_title('COVID19 Model for Georgia (SEIR, RK4)')
 plt.savefig('CurvesForCOVID19_GA.png')
 
 # =============================================================================
