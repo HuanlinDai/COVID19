@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 31 18:53:22 2020
+Created on Sun Apr 12 16:41:46 2020
 
 @author: localaccount
 """
@@ -22,9 +22,8 @@ yesterday=datetime.strftime(datetime.now() - timedelta(1), "%#m/%#d/%y")
 # =============================================================================
 url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
 df = pd.read_csv(url)
-df.drop(df[df['Province_State']!="Maryland"].index, inplace=True)
-StartDate = '3/12/20'
-PureData = df.loc[:,StartDate:yesterday]
+df.drop(df[df['Province_State']!="New York"].index, inplace=True)
+PureData = df.loc[:,'3/3/20':yesterday]
 DataSums=PureData.sum(axis=0)
 DataList = [DataSums.iloc[n] for n in range(len(DataSums))]
 
@@ -33,7 +32,7 @@ DataList = [DataSums.iloc[n] for n in range(len(DataSums))]
 # =============================================================================
 
 # Initial Parameters
-beta1=0.756 #Beta1
+beta1=1#1.047 #Beta1
 beta2=0
 gamma=1/14 # 1/(time to recover)
 sigma=1/5.1 # 1/(incubation period length)
@@ -60,10 +59,10 @@ betalist = [beta1*np.exp(beta2*n) for n in tlist]
 # Secondary Parameters if 2 parts
 if numOfParts>=2:
     beta1*=np.exp(beta2*(tEnd1-tStart1)) #Beta2
-    beta2=-.0665
+    beta2=0
     initCond2 = [listNums[-1] for listNums in solution.y] #Format: [S,E,I,R]
     tStart2=tEnd1
-    tEnd2=100
+    tEnd2=20
     tSolveSpace2=[tStart1,tEnd2]
     tEvalSpace2=np.linspace(tStart2,tEnd2,tEnd2-tStart2+1)
 
@@ -77,10 +76,10 @@ if numOfParts>=2:
 # Tertiary Paramaters if 3 parts
 if numOfParts>=3:
     beta1*=np.exp(beta2*(tEnd2-tStart2)) #Beta3
-    beta2=-0.27
+    beta2=-0.036
     initCond3 = [listNums[-1] for listNums in solution2.y] #Format: [S,E,I,R]
     tStart3=tEnd2
-    tEnd3=45
+    tEnd3=41
     tSolveSpace3=[tStart1,tEnd3]
     tEvalSpace3=np.linspace(tStart3,tEnd3,tEnd3-tStart3+1)
     
@@ -101,11 +100,11 @@ irlist=ylist[2]+ylist[3]
 # =============================================================================
 # Plotting
 # =============================================================================
-fig, axes = plt.subplots(1, 1, figsize=(20,12))
+fig, axes = plt.subplots(1, 1, figsize=(10,6))
 
 # Plotting [S, E, I, R]
+labels = ["Susceptible", "Exposed", "Infected", "Recovered"]
 # =============================================================================
-# labels = ["Susceptible", "Exposed", "Infected", "Recovered"]
 # for y_arr, label in zip(ylist, labels):
 #     if label != "Susceptible":
 #         plt.plot(tlist.T, y_arr, label=label)
@@ -139,9 +138,9 @@ plt.plot(tlist.T, irlist, label="Cumulative Predicted Cases (I+R)")
 plt.plot(tSpaceT, ypoints, label="Cumulative Reported Cases (I+R)")
 
 plt.legend(loc='best')
-axes.set_xlabel('Time since '+StartDate+' (Days)')
+axes.set_xlabel('Time since March 3rd (Days)')
 axes.set_ylabel('People')
-axes.set_title('COVID19 Model for MD (SEIR, RK4)')
+axes.set_title('COVID19 Modeling Using SEIR Model and RK4')
 plt.savefig('CurvesForCOVID19_MD.png')
 
 print("irlist=")
