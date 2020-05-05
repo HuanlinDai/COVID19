@@ -82,7 +82,7 @@ if numOfParts>=2:
 # If 3 parts, solving third IVP
 if numOfParts>=3:
     beta1*=np.exp(beta2*(tEnd2-tEnd1)) #Beta3
-    beta2=-0.02
+    beta2=-0.0175
     initCond3 = [listNums[-1] for listNums in solution2.y] #Format: [S,E,I,R]
     tEnd3=150
     tSolveSpace3=[0,tEnd3-tEnd2]
