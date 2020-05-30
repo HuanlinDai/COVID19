@@ -47,7 +47,7 @@ initInf = 15
 initCond = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 tStart1=0
 tEnd1=8
-numOfParts=3
+numOfParts=4
 
 tSolveSpace=[tStart1,tEnd1]
 tEvalSpace=np.linspace(tStart1,tEnd1,tEnd1-tStart1+1)
@@ -69,7 +69,7 @@ if numOfParts>=2:
 # =============================================================================
 #     beta1*=np.exp(beta2*(tEnd1-tStart1))
 # =============================================================================
-    beta1*=np.exp(beta2*(tEnd2-tStart2)) #Beta2
+    beta1*=np.exp(beta2*(tEnd1-tStart1)) #Beta2
     beta2=-0.05
     initCond2 = [listNums[-1] for listNums in solution.y] #Format: [S,E,I,R]
     tStart2=tEnd1
@@ -87,7 +87,7 @@ if numOfParts>=3:
     beta2=-0.07
     initCond3 = [listNums[-1] for listNums in solution2.y] #Format: [S,E,I,R]
     tStart3=tEnd2
-    tEnd3=100
+    tEnd3=64
     tSolveSpace3=[tStart1,tEnd3]
     tEvalSpace3=np.linspace(tStart3,tEnd3,tEnd3-tStart3+1)
     
@@ -96,6 +96,20 @@ if numOfParts>=3:
     tlist=np.concatenate((tlist,tlist3[1:]), axis=None)
     ylist=[np.concatenate((ylist[n],solution3.y[n][1:]), axis=None) for n in range(len(solution3.y))]
     betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution3.t))]
+if numOfParts>=4:
+    beta1*=np.exp(beta2*(tEnd3-tStart3)) #Beta4
+    beta2=-0.006
+    initCond4 = [listNums[-1] for listNums in solution3.y] #Format: [S,E,I,R]
+    tStart4=tEnd3
+    tEnd4=100
+    tSolveSpace4=[tStart1,tEnd4]
+    tEvalSpace4=np.linspace(tStart4,tEnd4,tEnd4-tStart4+1)
+    
+    solution4 = solve_ivp(f, tSolveSpace4, initCond4, t_eval=range(len(tEvalSpace4)))
+    tlist4= [solution4.t[n] + tEnd3 for n in range(len(tEvalSpace4))]
+    tlist=np.concatenate((tlist,tlist4[1:]), axis=None)
+    ylist=[np.concatenate((ylist[n],solution4.y[n][1:]), axis=None) for n in range(len(solution4.y))]
+    betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution4.t))]
 # =============================================================================
 # Plotting
 # =============================================================================
@@ -129,6 +143,13 @@ elif numOfParts==3:
     if n>=tEnd3+1:
         tSpaceT=np.linspace(tStart1,tEnd3,tEnd3-tStart1+1)
         ypoints=yvals31[tStart1:tEnd3+1]
+    else:
+        tSpaceT=np.linspace(0,n-1,n)
+        ypoints=yvals31[tStart1:n]
+elif numOfParts==4:
+    if n>=tEnd4+1:
+        tSpaceT=np.linspace(tStart1,tEnd4,tEnd4-tStart1+1)
+        ypoints=yvals31[tStart1:tEnd4+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
         ypoints=yvals31[tStart1:n]
