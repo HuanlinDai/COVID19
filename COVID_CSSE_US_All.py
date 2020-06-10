@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 31 18:53:22 2020
+Created on Sat May 30 17:43:06 2020
 
-@author: localaccount
+@author: zc
 """
+
 import pandas as pd
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -47,7 +48,7 @@ N=329450000 # Population size
 initInf = 100
 initCond = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 tEnd1=18
-numOfParts=3
+numOfParts=4
 
 tSolveSpace=[0,tEnd1]
 tEvalSpace=np.linspace(0,tEnd1,tEnd1-0+1)
@@ -84,7 +85,7 @@ if numOfParts>=3:
     beta1*=np.exp(beta2*(tEnd2-tEnd1)) #Beta3
     beta2=-0.0175
     initCond3 = [listNums[-1] for listNums in solution2.y] #Format: [S,E,I,R]
-    tEnd3=150
+    tEnd3=65
     tSolveSpace3=[0,tEnd3-tEnd2]
     tEvalSpace3=np.linspace(tEnd2,tEnd3,tEnd3-tEnd2+1)
     
@@ -93,6 +94,20 @@ if numOfParts>=3:
     tlist=np.concatenate((tlist,tlist3[1:]), axis=None)
     ylist=[np.concatenate((ylist[n],solution3.y[n][1:]), axis=None) for n in range(len(solution3.y))]
     betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution3.t))]
+#If 4 parts, solving fourth IVP 
+if numOfParts>=4:
+    beta1*=np.exp(beta2*(tEnd3-tEnd2)) #Beta4
+    beta2=0
+    initCond4 = [listNums[-1] for listNums in solution3.y] #Format: [S,E,I,R]
+    tEnd4=150
+    tSolveSpace4=[0,tEnd4]
+    tEvalSpace4=np.linspace(tEnd3,tEnd4,tEnd4-tEnd3+1)
+    
+    solution4 = solve_ivp(f, tSolveSpace4, initCond4, t_eval=range(len(tEvalSpace4)))
+    tlist4= [solution4.t[n] + tEnd3 for n in range(len(tEvalSpace4))]
+    tlist=np.concatenate((tlist,tlist4[1:]), axis=None)
+    ylist=[np.concatenate((ylist[n],solution4.y[n][1:]), axis=None) for n in range(len(solution4.y))]
+    betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution4.t))]
 
 ylistdf = pd.DataFrame(ylist, index=['S','E','I','R'])
 # =============================================================================
@@ -136,7 +151,13 @@ elif numOfParts==3:
     else:
         tSpaceT=np.linspace(0,n-1,n)
         ypoints=DataList[:n]
-
+elif numOfParts==4:
+    if n>=tEnd4+1:
+        tSpaceT=np.linspace(0,tEnd4,tEnd4+1)
+        ypoints=DataList[0:tEnd4+1]
+    else:
+        tSpaceT=np.linspace(0,n-1,n)
+        ypoints=DataList[0:n]
 plt.plot(tlist.T, irlist, label="Cumulative Predicted Cases (I+R)")
 # Plot formatting
 plt.plot(tSpaceT, ypoints, label="Cumulative Reported Cases (I+R)")
@@ -146,8 +167,10 @@ axes.set_xlabel('Time since '+StartDate+' (Days)')
 axes.set_ylabel('People')
 axes.set_title('COVID19 Model for US (SEIR, RK4)')
 plt.savefig('CurvesForCOVID19_US_Original.png')
-axes.set_yscale('log')
-plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
+# =============================================================================
+# axes.set_yscale('log')
+# plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
+# =============================================================================
 # =============================================================================
 # Printing
 # =============================================================================
@@ -175,5 +198,4 @@ Sources:
         https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
     More Data (Unused):
         https://www.worldometers.info/coronavirus/country/us/
-
 '''
