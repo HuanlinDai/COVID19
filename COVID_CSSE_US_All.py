@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat May 30 17:43:06 2020
+Created on Tue Mar 31 18:53:22 2020
 
-@author: zc
+@author: localaccount
 """
-
 import pandas as pd
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -22,20 +21,14 @@ today = datetime.now() # current date and time
 yesterday = datetime.strftime(datetime.now() - timedelta(1), "%#m/%#d/%y")
 
 # =============================================================================
-# Data recorded (beginning from March 1st = index 0)
+# Data from JHU (StartDate = March 1st = day 0)
 # =============================================================================
-url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
-df = pd.read_csv(url)
+df = pd.read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
 df.drop(df[df['Country_Region']!="US"].index, inplace=True)
 StartDate='3/1/20'
 PureData = df.loc[:,StartDate:yesterday]
 DataSums = PureData.sum(axis=0)
 DataList = [DataSums.iloc[n] for n in range(len(DataSums))]
-# =============================================================================
-# res = requests.get("https://www.worldometers.info/coronavirus/country/us/")
-# soup = bs4.BeautifulSoup(res.text,'html.parser')
-# datatable=soup.select('tbody')
-# =============================================================================
 
 # =============================================================================
 # Initial Parameters
@@ -94,20 +87,22 @@ if numOfParts>=3:
     tlist=np.concatenate((tlist,tlist3[1:]), axis=None)
     ylist=[np.concatenate((ylist[n],solution3.y[n][1:]), axis=None) for n in range(len(solution3.y))]
     betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution3.t))]
-#If 4 parts, solving fourth IVP 
+
+# If 4 parts, solving third IVP
 if numOfParts>=4:
-    beta1*=np.exp(beta2*(tEnd3-tEnd2)) #Beta4
+    beta1*=np.exp(beta2*(tEnd3-tEnd2)) #Beta3
     beta2=0
     initCond4 = [listNums[-1] for listNums in solution3.y] #Format: [S,E,I,R]
     tEnd4=150
-    tSolveSpace4=[0,tEnd4]
+    tSolveSpace4=[0,tEnd4-tEnd3]
     tEvalSpace4=np.linspace(tEnd3,tEnd4,tEnd4-tEnd3+1)
     
     solution4 = solve_ivp(f, tSolveSpace4, initCond4, t_eval=range(len(tEvalSpace4)))
-    tlist4= [solution4.t[n] + tEnd3 for n in range(len(tEvalSpace4))]
+    tlist4 = [solution4.t[n] + tEnd3 for n in range(len(tEvalSpace4))]
     tlist=np.concatenate((tlist,tlist4[1:]), axis=None)
-    ylist=[np.concatenate((ylist[n],solution4.y[n][1:]), axis=None) for n in range(len(solution4.y))]
+    ylist=[np.concatenate((ylist[n],solution4.y[n][1:]), axis=None) for n in range(len(solution3.y))]
     betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution4.t))]
+
 
 ylistdf = pd.DataFrame(ylist, index=['S','E','I','R'])
 # =============================================================================
@@ -126,27 +121,27 @@ fig, axes = plt.subplots(1, 1, figsize=(20,12))
 # for y_arr, label in zip(ylist, labels):
 #     if label != "Susceptible":
 #         plt.plot(tlist.T, y_arr, label=label)
+# 
 # =============================================================================
-
 # Plotting Reported Infections
 n=len(DataList)
 if numOfParts==1:
     if n>=tEnd1+1:
-        tSpaceT=np.linspace(0,tEnd1,tEnd1-0+1)
+        tSpaceT=np.linspace(0,tEnd1,tEnd1+1)
         ypoints=DataList[:tEnd1+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
         ypoints=DataList[:n]
 elif numOfParts==2:
     if n>=tEnd2+1:
-        tSpaceT=np.linspace(0,tEnd2,tEnd2-0+1)
+        tSpaceT=np.linspace(0,tEnd2,tEnd2+1)
         ypoints=DataList[:tEnd2+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
         ypoints=DataList[:n]
 elif numOfParts==3:
     if n>=tEnd3+1:
-        tSpaceT=np.linspace(0,tEnd3,tEnd3-0+1)
+        tSpaceT=np.linspace(0,tEnd3,tEnd3+1)
         ypoints=DataList[:tEnd3+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
@@ -154,10 +149,11 @@ elif numOfParts==3:
 elif numOfParts==4:
     if n>=tEnd4+1:
         tSpaceT=np.linspace(0,tEnd4,tEnd4+1)
-        ypoints=DataList[0:tEnd4+1]
+        ypoints=DataList[:tEnd4+1]
     else:
         tSpaceT=np.linspace(0,n-1,n)
-        ypoints=DataList[0:n]
+        ypoints=DataList[:n]
+
 plt.plot(tlist.T, irlist, label="Cumulative Predicted Cases (I+R)")
 # Plot formatting
 plt.plot(tSpaceT, ypoints, label="Cumulative Reported Cases (I+R)")
@@ -167,10 +163,8 @@ axes.set_xlabel('Time since '+StartDate+' (Days)')
 axes.set_ylabel('People')
 axes.set_title('COVID19 Model for US (SEIR, RK4)')
 plt.savefig('CurvesForCOVID19_US_Original.png')
-# =============================================================================
-# axes.set_yscale('log')
-# plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
-# =============================================================================
+#axes.set_yscale('log')
+#plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
 # =============================================================================
 # Printing
 # =============================================================================
@@ -198,4 +192,5 @@ Sources:
         https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
     More Data (Unused):
         https://www.worldometers.info/coronavirus/country/us/
+
 '''
