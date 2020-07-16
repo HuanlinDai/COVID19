@@ -15,18 +15,19 @@ from datetime import datetime, timedelta
 # =============================================================================
 
 # =============================================================================
-# Dates
+# Dates and Data (StartDate = March 1st = day 0)
 # =============================================================================
 today = datetime.now() # current date and time
 yesterday = datetime.strftime(datetime.now() - timedelta(1), "%#m/%#d/%y")
-
-# =============================================================================
-# Data from JHU (StartDate = March 1st = day 0)
-# =============================================================================
 df = pd.read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
 df.drop(df[df['Country_Region']!="US"].index, inplace=True)
 StartDate='3/1/20'
-PureData = df.loc[:,StartDate:yesterday]
+try:
+    PureData = df.loc[:,StartDate:yesterday]
+except KeyError:
+    today = datetime.strftime(datetime.now() - timedelta(1), "%#m/%#d/%y") # current date and time
+    yesterday = datetime.strftime(datetime.now() - timedelta(2), "%#m/%#d/%y")
+    PureData = df.loc[:,StartDate:yesterday]
 DataSums = PureData.sum(axis=0)
 DataList = [DataSums.iloc[n] for n in range(len(DataSums))]
 
@@ -114,7 +115,7 @@ irlist=ylist[2]+ylist[3]
 # =============================================================================
 # Plots
 # =============================================================================
-fig, axes = plt.subplots(1, 1, figsize=(20,12))
+fig, axes = plt.subplots(1, 1, figsize=(15,9))
 # Plotting [S, E, I, R]
 # =============================================================================
 # labels = ["Susceptible", "Exposed", "Infected", "Recovered"]

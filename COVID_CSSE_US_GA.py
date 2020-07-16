@@ -92,7 +92,7 @@ if numOfParts>=3:
     beta1*=np.exp(beta2*(tEnd2-tEnd1)) #Beta3
     beta2=-0.0496
     initCond3 = [listNums[-1] for listNums in solution2.y] #Format: [S,E,I,R]
-    tEnd3=150
+    tEnd3=100
     tSolveSpace3=[0,tEnd3-tEnd2]
     tEvalSpace3=np.linspace(tEnd2,tEnd3,tEnd3-tEnd2+1)
     
@@ -107,6 +107,28 @@ if numOfParts>=3:
     solution32 = solve_ivp(f, tSolveSpace3, initCond3, t_eval=range(len(tEvalSpace3)))
     ylist2=[np.concatenate((ylist[n],solution32.y[n][1:]), axis=None) for n in range(len(solution32.y))]
     betalist2=betalist+[beta1*np.exp(beta2*n) for n in range(len(solution32.t))]
+    #Alternate Sol'n if social distancing is repealed
+    x0 = 4
+    rho = 5.11
+    tox0 = 4
+    tEvalSpace32 = np.linspace(tEnd2, tEnd2+tox0, tox0+1)
+    # =============================================================================
+    # DiffEQ (Gaussian Curve Beta)
+    # =============================================================================
+    def g(t,y): # Here is a new function that uses a Gaussian curve to model beta.
+        [S,E,I,R]=y
+        return [-(((np.exp((-(t-x0)**2)/50))/(rho*np.pi*2**0.5)))*S*I/N, (((np.exp((-(t-x0)**2)/50))/(rho*np.pi*2**0.5)))*S*I/N-sigma*E, sigma*E-gamma*I, gamma*I]
+    
+    solution32 = solve_ivp(g, tSolveSpace3, initCond3, t_eval=range(len(tEvalSpace32)))
+    ylist2=[np.concatenate((ylist[n],solution32.y[n][1:]), axis=None) for n in range(len(solution32.y))]
+    
+    initCond32 = [listNums[-1] for listNums in solution32.y] #Format: [S,E,I,R]
+    beta1=0.0786
+    beta2=-0.012
+    tEvalSpace33 = np.linspace(tEnd2+tox0, tEnd3, tEnd3-tEnd2-tox0+1)
+    solution33 = solve_ivp(f, tSolveSpace3, initCond32, t_eval=range(len(tEvalSpace33)))
+    ylist2=[np.concatenate((ylist2[n],solution33.y[n][1:]), axis=None) for n in range(len(solution33.y))]
+    betalist2=betalist+[beta1*np.exp(beta2*n) for n in range(len(solution32.t))]
 
 ylistdf = pd.DataFrame(ylist, index=['S','E','I','R'])
 # =============================================================================
@@ -119,7 +141,7 @@ irlist2=ylist2[2]+ylist2[3]
 # =============================================================================
 # Plotting
 # =============================================================================
-fig, axes = plt.subplots(1, 1, figsize=(10,6))
+fig, axes = plt.subplots(1, 1, figsize=(20,12))
 
 # Plotting [S, E, I, R]
 # =============================================================================

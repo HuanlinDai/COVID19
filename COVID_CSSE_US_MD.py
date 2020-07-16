@@ -42,7 +42,7 @@ initInf=18
 initCond = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 tStart1=0
 tEnd1=8
-numOfParts=2
+numOfParts=3
 
 tSolveSpace=[tStart1,tEnd1]
 tEvalSpace=np.linspace(tStart1,tEnd1,tEnd1-tStart1+1)
@@ -60,14 +60,13 @@ betalist = [beta1*np.exp(beta2*n) for n in tlist]
 # Secondary Parameters if 2 parts
 if numOfParts>=2:
     beta1*=np.exp(beta2*(tEnd1-tStart1)) #Beta2
-    beta2=-.0665
+    beta2=-.066
     initCond2 = [listNums[-1] for listNums in solution.y] #Format: [S,E,I,R]
     tStart2=tEnd1
-    tEnd2=100
+    tEnd2=37
     tSolveSpace2=[tStart1,tEnd2]
     tEvalSpace2=np.linspace(tStart2,tEnd2,tEnd2-tStart2+1)
 
-    
     solution2 = solve_ivp(f, tSolveSpace2, initCond2, t_eval=range(len(tEvalSpace2)))
     tlist2= [solution2.t[n] + tEnd1 for n in range(len(tEvalSpace2))]
     tlist=np.concatenate((tlist,tlist2[1:]), axis=None)
@@ -77,10 +76,10 @@ if numOfParts>=2:
 # Tertiary Paramaters if 3 parts
 if numOfParts>=3:
     beta1*=np.exp(beta2*(tEnd2-tStart2)) #Beta3
-    beta2=-0.27
+    beta2=-.0115
     initCond3 = [listNums[-1] for listNums in solution2.y] #Format: [S,E,I,R]
     tStart3=tEnd2
-    tEnd3=45
+    tEnd3=130
     tSolveSpace3=[tStart1,tEnd3]
     tEvalSpace3=np.linspace(tStart3,tEnd3,tEnd3-tStart3+1)
     
@@ -90,6 +89,19 @@ if numOfParts>=3:
     ylist=[np.concatenate((ylist[n],solution3.y[n][1:]), axis=None) for n in range(len(solution3.y))]
     betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution3.t))]
 
+if numOfParts>=4:
+    beta1*=np.exp(beta2*(tEnd3-tEnd2)) #Beta3
+    beta2=-0.0115
+    initCond4 = [listNums[-1] for listNums in solution3.y] #Format: [S,E,I,R]
+    tEnd4=150
+    tSolveSpace4=[0,tEnd4-tEnd3]
+    tEvalSpace4=np.linspace(tEnd3,tEnd4,tEnd4-tEnd3+1)
+    
+    solution4 = solve_ivp(f, tSolveSpace4, initCond4, t_eval=range(len(tEvalSpace4)))
+    tlist4 = [solution4.t[n] + tEnd3 for n in range(len(tEvalSpace4))]
+    tlist=np.concatenate((tlist,tlist4[1:]), axis=None)
+    ylist=[np.concatenate((ylist[n],solution4.y[n][1:]), axis=None) for n in range(len(solution3.y))]
+    betalist+=[beta1*np.exp(beta2*n) for n in range(len(solution4.t))]
 
 ylistdf = pd.DataFrame(ylist, index=['S','E','I','R'])
 # =============================================================================
@@ -133,7 +145,13 @@ elif numOfParts==3:
     else:
         tSpaceT=np.linspace(0,n-1,n)
         ypoints=DataList[tStart1:n]
-
+elif numOfParts==4:
+    if n>=tEnd4+1:
+        tSpaceT=np.linspace(0,tEnd4,tEnd4+1)
+        ypoints=DataList[:tEnd4+1]
+    else:
+        tSpaceT=np.linspace(0,n-1,n)
+        ypoints=DataList[:n]
 plt.plot(tlist.T, irlist, label="Cumulative Predicted Cases (I+R)")
 # Plot formatting
 plt.plot(tSpaceT, ypoints, label="Cumulative Reported Cases (I+R)")
