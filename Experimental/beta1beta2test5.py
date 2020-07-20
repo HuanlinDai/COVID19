@@ -25,14 +25,14 @@ except KeyError:
     yesterday = datetime.strftime(datetime.now() - timedelta(2), "%#m/%#d/%y")
     PureData = df.loc[:,StartDate:yesterday]
 DataSums = PureData.sum(axis=0)
-DataSample = DataSums.loc["3/1/20":"3/13/20"]
+DataSample = DataSums.loc["3/19/20":"4/10/20"]
 
 gamma=1/14 # 1/(time to recover)
 sigma=1/5.1 # 1/(incubation period length)
 N=329450000 # Population size
 initInf = DataSample[0]
 initCond = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
-tEnd1=12
+tEnd1=22
 numOfParts=1
 
 tSolveSpace=[0,tEnd1]
@@ -111,7 +111,7 @@ def find_min(data,popsize): #Used for finding the minumum of beta2
     global gamma
     global sigma
     global initInf
-    for tempinitInf in np.arange(initInf,3*initInf,5):
+    for tempinitInf in np.arange(initInf,2*initInf,initInf/5):
         tempinitCond = [popsize-2.5*tempinitInf,tempinitInf*1.5,tempinitInf,0]
         for beta3 in np.arange(0.01,2,0.01):
             bestbeta4 = twothirdscut(DataSample, beta3, np.arange(-.1,0,0.0001))
@@ -119,6 +119,7 @@ def find_min(data,popsize): #Used for finding the minumum of beta2
             tempIR = tempsoln.y[2] + tempsoln.y[3]
             tempdiff = sum([abs(tempIR[n]-data[n]) for n in range(0,tEnd1)])
             BetasList.append([beta3,bestbeta4,tempdiff, tempinitInf])
+            
 find_min(DataSample,N)
 
 SortedBetasList = Sort_Tuple(BetasList)
