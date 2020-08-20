@@ -2,7 +2,7 @@
 """
 Created on August 20 2020
 
-@author: zc
+@author: daihu and zc
 """
 import math
 import pandas as pd
