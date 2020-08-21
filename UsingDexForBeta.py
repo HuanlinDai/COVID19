@@ -2,7 +2,7 @@
 """
 Created on Sat Aug 15 14:32:13 2020
 
-@author: zc
+@author: zc and daihu
 """
 
 #Using Dex for Beta
