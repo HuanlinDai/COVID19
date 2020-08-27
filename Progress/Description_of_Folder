@@ -1,0 +1,3 @@
+This folder documents our progress in adding new functionalities to our code, 
+such as importing mobility data and defining gamma (recovery rate) as a function 
+based on the ratio of severe cases to non-severe cases.
