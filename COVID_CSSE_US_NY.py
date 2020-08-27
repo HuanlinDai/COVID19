@@ -152,7 +152,7 @@ plt.legend(loc='best')
 axes.set_xlabel('Time since ' +StartDate+ ' (Days)')
 axes.set_ylabel('People')
 axes.set_title('COVID19 Modeling Using SEIR Model and RK4')
-plt.savefig('CurvesForCOVID19.png')
+plt.savefig('Graphs/CurvesForCOVID19_NY.png')
 
 print("irlist=")
 print(irlist)

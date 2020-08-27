@@ -9,23 +9,65 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
+from scipy import signal
+# =============================================================================
+# Dates
+# =============================================================================
+# Manual
+Location = "United States"
+StartDate='3/1/20'
+
+# Auto
+StartDateObj=datetime.strptime(StartDate,'%m/%d/%y')
+
+todayObj = datetime.now()
+yesterdayObj = datetime.now() - timedelta(days=2)
+today = datetime.strftime(todayObj, "%#m/%#d/%y")
+yesterday = datetime.strftime(yesterdayObj, "%#m/%#d/%y")
+tEnd=(todayObj-StartDateObj).days
 
 # =============================================================================
-# Dates and Data (StartDate = March 1st = day 0)
-# 
+# Data
 # =============================================================================
-today = datetime.now() # current date and time
-yesterday = datetime.strftime(datetime.now() - timedelta(1), "%#m/%#d/%y")
-df = pd.read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
-df.drop(df[df['Country_Region']!="US"].index, inplace=True)
-StartDate='3/1/20'
+# Cumulative Infections Data (CSSE) and New Cases Data (COVIDTrackingProject)
+CSSE = pd.read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
+if Location == "United States":
+    CSSE.drop(CSSE[CSSE['Country_Region']!="US"].index, inplace=True)
+    CovTrac=pd.read_csv('https://covidtracking.com/api/v1/us/daily.csv')
+else:
+    CSSE.drop(CSSE[CSSE['Province_State']!=Location].index, inplace=True)
+    CovTrac=pd.read_csv('https://covidtracking.com/api/v1/states/daily.csv')
+    us_state_abbrev = {'Alabama': 'AL','Alaska': 'AK','American Samoa': 'AS','Arizona': 'AZ','Arkansas': 'AR','California': 'CA','Colorado': 'CO','Connecticut': 'CT','Delaware': 'DE','District of Columbia': 'DC','Florida': 'FL','Georgia': 'GA','Guam': 'GU','Hawaii': 'HI','Idaho': 'ID','Illinois': 'IL','Indiana': 'IN','Iowa': 'IA','Kansas': 'KS','Kentucky': 'KY','Louisiana': 'LA','Maine': 'ME','Maryland': 'MD','Massachusetts': 'MA','Michigan': 'MI','Minnesota': 'MN','Mississippi': 'MS','Missouri': 'MO','Montana': 'MT','Nebraska': 'NE','Nevada': 'NV','New Hampshire': 'NH','New Jersey': 'NJ','New Mexico': 'NM','New York': 'NY','North Carolina': 'NC','North Dakota': 'ND','Northern Mariana Islands':'MP','Ohio': 'OH','Oklahoma': 'OK','Oregon': 'OR','Pennsylvania': 'PA','Puerto Rico': 'PR','Rhode Island': 'RI','South Carolina': 'SC','South Dakota': 'SD','Tennessee': 'TN','Texas': 'TX','Utah': 'UT','Vermont': 'VT','Virgin Islands': 'VI','Virginia': 'VA','Washington': 'WA','West Virginia': 'WV','Wisconsin': 'WI','Wyoming': 'WY'}
+    StateCode = us_state_abbrev[Location]
+    CovTrac.drop(CovTrac[CovTrac['state']!=StateCode].index, inplace=True)
+
+
+# Dataframe formatting
+CovTrac=CovTrac[::-1] #Reverse CovTrac Data to go from past to present
+#Convert strange date format %Y%m%d to %m/%d/%y
+CovTrac['date']=[datetime.strftime(datetime.strptime(str(CovTrac['date'].iloc[n]),'%Y%m%d'), "%#m/%#d/%y") for n in range(len(CovTrac['date']))]
+CovTrac.set_index('date', inplace=True)
 try:
-    PureData = df.loc[:,StartDate:yesterday]
+    pureCSSE = CSSE.loc[:,StartDate:today]
+    pureCovTrac = CovTrac.loc[StartDate:today]
 except KeyError:
-    today = datetime.strftime(datetime.now() - timedelta(1), "%#m/%#d/%y") # current date and time
-    yesterday = datetime.strftime(datetime.now() - timedelta(2), "%#m/%#d/%y")
-    PureData = df.loc[:,StartDate:yesterday]
-DataSums = PureData.sum(axis=0)
+    pureCSSE = CSSE.loc[:,StartDate:yesterday]
+    pureCovTrac = CovTrac.loc[StartDate:yesterday]
+    tEnd-=1
+
+sumCSSE = pureCSSE.sum(axis=0)
+
+daterange=[datetime.strftime(yesterdayObj - timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd+1)]
+reverseddaterange = [d for d in reversed(daterange)]
+newInf=[CovTrac.loc[date]['positiveIncrease'] for date in daterange]
+newInf.reverse()
+savgolnewInf=signal.savgol_filter(newInf,51,5)
+
+daterange=[datetime.strftime(StartDateObj + timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd)]
+
+# Population Data
+pop = pd.read_csv("https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv")
+pop.drop(pop[pop['NAME']!=Location].index, inplace=True)
 
 # =============================================================================
 # Parameters
@@ -36,10 +78,9 @@ N=329450000 # Population size
 initInf = 100
 initCond1 = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 
-numOfParts=4
-times=[0,18,40,65,150]
-beta1List=[0.820]
-beta2List=[0,-0.0967,-0.0175,0]
+times=[0,18,40,65,100,106,118,123,145,tEnd]
+beta1List=[0.82]
+beta2List=[0,-0.0967,-0.0175,0,.065,.03,0,-0.02,-0.023]
 
 for i in range(len(beta2List)):    
     beta1List.append(beta1List[i]*np.exp(beta2List[i]*(times[i+1]-times[i])))
@@ -55,49 +96,75 @@ tlists=[0]
 ylists=[]
 allbetalists=[]
 initCondList=[initCond1]
-z=len(DataSums)
-for i in range(numOfParts):
+
+for i in range(len(beta2List)):
     beta1=beta1List[i]
     beta2=beta2List[i]
-    newsolution=solve_ivp(f, [0,times[i+1]-times[i]], initCondList[i], t_eval=range(len(np.linspace(times[i],times[i+1],times[i+1]-times[i]+1))), args=[beta1,beta2])
-    initCondList.append([listNums[-1] for listNums in newsolution.y])
-    newtlist=[newsolution.t[n] + times[i] for n in range(len(np.linspace(times[i],times[i+1],times[i+1]-times[i]+1)))]
-    tlists=np.concatenate((tlists,newtlist[1:]), axis=None)
-    if len(ylists)==0:
-        ylists=newsolution.y
+    ntEval=np.linspace(0,times[i+1]-times[i],times[i+1]-times[i]+1,dtype=int)
+    nsoln=solve_ivp(f, [0,ntEval[-1]], initCondList[i], t_eval=ntEval, args=[beta1,beta2])
+    initCondList.append([listNums[-1] for listNums in nsoln.y])
+    ntlist=[nsoln.t[n] + times[i] for n in range(len(ntEval))]
+    tlists=np.concatenate((tlists,ntlist[1:]), axis=None)
+    if len(ylists)!=0:
+        ylists=[np.concatenate((ylists[n],nsoln.y[n][1:]), axis=None) for n in range(len(nsoln.y))]
     else:
-        ylists=[np.concatenate((ylists[n],newsolution.y[n][1:]), axis=None) for n in range(len(newsolution.y))]
-    allbetalists+=[beta1List[i]*np.exp(beta2List[i]*n) for n in range(len(newsolution.t))]
-    if z>=times[i+1]+1:
-        tSpaceT=np.linspace(0,times[i+1],times[i+1]+1)
-        ypoints=DataSums[:times[i+1]+1]
-    else:
-        tSpaceT=np.linspace(0,z-1,z)
-        ypoints=DataSums[:z]
+        ylists=nsoln.y
+    allbetalists+=[beta1List[i]*np.exp(beta2List[i]*n) for n in range(len(ntEval))]
+    if times[i+1]+1>len(sumCSSE):
+        tLimit=np.linspace(0,len(sumCSSE),len(sumCSSE)+1)
 ylistsdf = pd.DataFrame(ylists, index=['S','E','I','R'])
+newCases = [ylists[2][n+1]-ylists[2][n]+ylists[3][n+1]-ylists[3][n] for n in range(len(ylists[2])-1)]
 
 # =============================================================================
 # Plots and Prints
 # =============================================================================
-fig, axes = plt.subplots(1, 1, figsize=(15,9))
-# =============================================================================
-# # Plotting [S, E, I, R]
-# labels = ["Susceptible", "Exposed", "Infected", "Recovered"]
-# for y_arr, label in zip(ylists, labels):
-#     if label != "Susceptible":
-#         plt.plot(tlists.T, y_arr, label=label)
-# =============================================================================
-plt.plot(tlists.T, ylists[2]+ylists[3], label="Cumulative Predicted Cases (I+R)")
-plt.plot(tSpaceT, ypoints, label="Cumulative Reported Cases (I+R)")
-plt.legend(loc='best')
-axes.set_xlabel('Time since ' + StartDate + ' (Days)')
-axes.set_ylabel('People')
-axes.set_title('COVID19 Model for US (SEIR, RK4)')
-axes.grid()
-plt.savefig('CurvesForCOVID19_US_Original.png')
-#axes.set_yscale('log')
-#plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
+gsd= '3/1/20' # graph start date
+ged= '8/25/20' # graph end date
+plot_SEIR=0
+plot_IR=1
+plot_newCases=1
 
+
+def replot(): #Separate function for graphing allows for easier console use
+
+    gsdObj=datetime.strptime(gsd,'%m/%d/%y')
+    gedObj=datetime.strptime(ged,'%m/%d/%y')
+    rangeStart = (gsdObj-StartDateObj).days
+    rangeEnd = (gedObj-StartDateObj).days
+
+    fig, (ax1,ax2) = plt.subplots(2,figsize=(15,9))
+    # Plotting [S, E, I, R]
+    if plot_SEIR==1:
+        labels = ["Susceptible", "Exposed", "Infected", "Recovered"]
+        for y_arr, label in zip(ylists, labels):
+            if label in ["Infected", "Recovered", "Exposed"]:
+                plt.plot(tlists.T[rangeStart:rangeEnd], y_arr[rangeStart:rangeEnd], label=label)
+    # Plotting I+R
+    pIRList=ylists[2]+ylists[3]
+    ax1.plot(tlists.T[rangeStart:rangeEnd], pIRList[rangeStart:rangeEnd], label="Cumulative Predicted Cases (I+R)")
+    ax1.plot(tlists.T[rangeStart:rangeEnd], sumCSSE[rangeStart:rangeEnd], label="Cumulative Reported Cases (I+R)")
+    # Plotting New Cases
+    ax2.plot(daterange[rangeStart:rangeEnd], newCases[rangeStart:rangeEnd], label="pNew Cases(dI+dR)")
+    ax2.plot(daterange[rangeStart:rangeEnd], newInf[rangeStart:rangeEnd], label="Actual New Cases")
+    ax2.plot(daterange[rangeStart:rangeEnd], savgolnewInf[rangeStart:rangeEnd], label="savgol Actual New Cases")
+    monthstartnum=[0,15,31,46,61,76,92,107,122,137,153,168]
+    monthstartdate=[daterange[n] for n in monthstartnum]
+    for ax in [ax1,ax2]:
+        plt.sca(ax)
+        plt.xticks(monthstartnum,monthstartdate)
+    
+    # Plot Config
+    ax1.legend(loc='best')
+    ax2.legend(loc='best')
+    plt.xlabel('Time since ' + StartDate + ' (Days)')
+    plt.ylabel('People')
+    ax1.set_title('COVID19 Model 2 for US (SEIR, RK4)')
+    ax1.grid()
+    ax2.grid()
+    plt.savefig('Graphs/CurvesForCOVID19_US_2.png')
+    #axes.set_yscale('log')
+    #plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
+replot()
 print("I+R")
 print(ylists[2]+ylists[3])
 

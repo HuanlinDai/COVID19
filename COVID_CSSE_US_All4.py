@@ -41,7 +41,6 @@ else:
     StateCode = us_state_abbrev[Location]
     CovTrac.drop(CovTrac[CovTrac['state']!=StateCode].index, inplace=True)
 
-
 # Dataframe formatting
 CovTrac=CovTrac[::-1] #Reverse CovTrac Data to go from past to present
 #Convert strange date format %Y%m%d to %m/%d/%y
@@ -57,21 +56,17 @@ except KeyError:
 
 sumCSSE = pureCSSE.sum(axis=0)
 
-daterange=[datetime.strftime(yesterdayObj - timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd+1)]
-reverseddaterange = [d for d in reversed(daterange)]
-newInf=[CovTrac.loc[date]['positiveIncrease'] for date in daterange]
-newInf.reverse()
-savgolnewInf=signal.savgol_filter(newInf,51,5)
-
 daterange=[datetime.strftime(StartDateObj + timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd)]
-
-# Population Data
-pop = pd.read_csv("https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv")
-pop.drop(pop[pop['NAME']!=Location].index, inplace=True)
+newInf=[CovTrac.loc[date]['positiveIncrease'] for date in daterange]
+savgolnewInf=signal.savgol_filter(newInf,51,5)
 
 # =============================================================================
 # Parameters
 # =============================================================================
+# Population Data
+pop = pd.read_csv("https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv")
+pop.drop(pop[pop['NAME']!=Location].index, inplace=True)
+
 gamma=1/14 # 1/(time to recover)
 sigma=1/5.1 # 1/(incubation period length)
 N=329450000 # Population size
@@ -81,7 +76,6 @@ initCond1 = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 times=[0,18,40,65,100,106,118,123,145,tEnd]
 beta1List=[0.82]
 beta2List=[0,-0.0967,-0.0175,0,.065,.03,0,-0.02,-0.023]
-
 for i in range(len(beta2List)):    
     beta1List.append(beta1List[i]*np.exp(beta2List[i]*(times[i+1]-times[i])))
 
@@ -96,7 +90,6 @@ tlists=[0]
 ylists=[]
 allbetalists=[]
 initCondList=[initCond1]
-
 for i in range(len(beta2List)):
     beta1=beta1List[i]
     beta2=beta2List[i]
@@ -113,66 +106,62 @@ for i in range(len(beta2List)):
     if times[i+1]+1>len(sumCSSE):
         tLimit=np.linspace(0,len(sumCSSE),len(sumCSSE)+1)
 ylistsdf = pd.DataFrame(ylists, index=['S','E','I','R'])
-newCases = [ylists[2][n+1]-ylists[2][n]+ylists[3][n+1]-ylists[3][n] for n in range(len(ylists[2])-1)]
+pnewCases = [ylists[2][n+1]-ylists[2][n]+ylists[3][n+1]-ylists[3][n] for n in range(len(ylists[2])-1)]
 
 # =============================================================================
 # Plots and Prints
 # =============================================================================
 gsd= '3/1/20' # graph start date
 ged= '8/25/20' # graph end date
-plot_SEIR=0
-plot_IR=1
-plot_newCases=1
+gsdObj=datetime.strptime(gsd,'%m/%d/%y')
+gedObj=datetime.strptime(ged,'%m/%d/%y')
+rangeStart = (gsdObj-StartDateObj).days
+rangeEnd = (gedObj-StartDateObj).days
+
+fig, (ax1,ax2) = plt.subplots(2,figsize=(20,12))
+
+# Plotting [S, E, I, R]
+labels = ["Susceptible", "Exposed", "Infected", "Recovered"]
+for y_arr, label in zip(ylists, labels):
+    if label in ["Infected", "Recovered", "Exposed"]:
+        ax1.plot(tlists.T[rangeStart:rangeEnd], y_arr[rangeStart:rangeEnd], label=label)
+# Plotting I+R
+pIRList=ylists[2]+ylists[3]
+ax1.plot(tlists.T[rangeStart:rangeEnd], pIRList[rangeStart:rangeEnd], label="Infected + Recovered")
+ax1.plot(tlists.T[rangeStart:rangeEnd], sumCSSE[rangeStart:rangeEnd], label="Reported Cases")
+# Plotting New Cases
+ax2.plot(daterange[rangeStart:rangeEnd], pnewCases[rangeStart:rangeEnd], label="pNew Cases(dI+dR)")
+ax2.plot(daterange[rangeStart:rangeEnd], newInf[rangeStart:rangeEnd], label="Actual New Cases")
+ax2.plot(daterange[rangeStart:rangeEnd], savgolnewInf[rangeStart:rangeEnd], label="savgol Actual New Cases")
+monthstartnum=[0,15,31,46,61,76,92,107,122,137,153,168]
+monthstartdate=[daterange[n] for n in monthstartnum]
+for ax in [ax1,ax2]:
+    plt.sca(ax)
+    plt.xticks(monthstartnum,monthstartdate)
+
+# Plot Config
+ax1.legend(loc='best')
+ax2.legend(loc='best')
+plt.xlabel('Time since ' + StartDate + ' (Days)')
+plt.ylabel('People')
+ax1.set_title('COVID19 Model 4 for US (SEIR, RK4)')
+ax2.set_title('New Cases Per Day')
+ax1.grid()
+ax2.grid()
+# Logarithmic Graph
+ax1.set_yscale('log')
+plt.savefig('Graphs/CurvesForCOVID19_US_4_Logarithmic.png')
+ax1.set_yscale('linear')
+plt.savefig('Graphs/CurvesForCOVID19_US_4.png')
 
 
-def replot(): #Separate function for graphing allows for easier console use
-
-    gsdObj=datetime.strptime(gsd,'%m/%d/%y')
-    gedObj=datetime.strptime(ged,'%m/%d/%y')
-    rangeStart = (gsdObj-StartDateObj).days
-    rangeEnd = (gedObj-StartDateObj).days
-
-    fig, (ax1,ax2) = plt.subplots(2,figsize=(15,9))
-    # Plotting [S, E, I, R]
-    if plot_SEIR==1:
-        labels = ["Susceptible", "Exposed", "Infected", "Recovered"]
-        for y_arr, label in zip(ylists, labels):
-            if label in ["Infected", "Recovered", "Exposed"]:
-                plt.plot(tlists.T[rangeStart:rangeEnd], y_arr[rangeStart:rangeEnd], label=label)
-    # Plotting I+R
-    pIRList=ylists[2]+ylists[3]
-    ax1.plot(tlists.T[rangeStart:rangeEnd], pIRList[rangeStart:rangeEnd], label="Cumulative Predicted Cases (I+R)")
-    ax1.plot(tlists.T[rangeStart:rangeEnd], sumCSSE[rangeStart:rangeEnd], label="Cumulative Reported Cases (I+R)")
-    # Plotting New Cases
-    ax2.plot(daterange[rangeStart:rangeEnd], newCases[rangeStart:rangeEnd], label="pNew Cases(dI+dR)")
-    ax2.plot(daterange[rangeStart:rangeEnd], newInf[rangeStart:rangeEnd], label="Actual New Cases")
-    ax2.plot(daterange[rangeStart:rangeEnd], savgolnewInf[rangeStart:rangeEnd], label="savgol Actual New Cases")
-    monthstartnum=[0,15,31,46,61,76,92,107,122,137,153,168]
-    monthstartdate=[daterange[n] for n in monthstartnum]
-    for ax in [ax1,ax2]:
-        plt.sca(ax)
-        plt.xticks(monthstartnum,monthstartdate)
-    
-    # Plot Config
-    ax1.legend(loc='best')
-    ax2.legend(loc='best')
-    plt.xlabel('Time since ' + StartDate + ' (Days)')
-    plt.ylabel('People')
-    ax1.set_title('COVID19 Model 4 for US (SEIR, RK4)')
-    ax2.set_title('New Cases Per Day')
-    ax1.grid()
-    ax2.grid()
-    plt.savefig('CurvesForCOVID19_US_4.png')
-    #axes.set_yscale('log')
-    #plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
-replot()
 print("I+R")
 print(ylists[2]+ylists[3])
 
 '''
 Sources:
     
-    Total Accumulated 
+    Total Accumulated Cases
         https://www.cdc.gov/coronavirus/2019-ncov/cases-updates/cases-in-us.html
     Time for incubation:
         https://annals.org/aim/fullarticle/2762808/incubation-period-coronavirus-disease-2019-covid-19-from-publicly-reported

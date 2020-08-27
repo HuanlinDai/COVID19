@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr 22 19:42:25 2020
-
-@author: localaccount
-"""
-
-
-# -*- coding: utf-8 -*-
-"""
 Created on Tue Mar 31 18:53:22 2020
 
 @author: localaccount
@@ -184,7 +176,7 @@ plt.legend(loc='best')
 axes.set_xlabel('Time since '+StartDate+' (Days)')
 axes.set_ylabel('People')
 axes.set_title('COVID19 Model for US (SEIR, RK4)')
-plt.savefig('CurvesForCOVID19_GA.png')
+plt.savefig('Graphs/CurvesForCOVID19_GA.png')
 
 # =============================================================================
 # Printing

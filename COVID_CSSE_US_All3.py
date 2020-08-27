@@ -171,7 +171,7 @@ axes.set_xlabel('Time since ' + StartDate + ' (Days)')
 axes.set_ylabel('People')
 axes.set_title('COVID19 Model for US 3 (SEIR, RK4)')
 axes.grid()
-plt.savefig('CurvesForCOVID19_US_3.png')
+plt.savefig('Graphs/CurvesForCOVID19_US_3.png')
 #axes.set_yscale('log')
 #plt.savefig('CurvesForCOVID19_US_Logarithmic.png')
 
