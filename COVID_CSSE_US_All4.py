@@ -58,7 +58,7 @@ sumCSSE = pureCSSE.sum(axis=0)
 
 daterange=[datetime.strftime(StartDateObj + timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd)]
 newInf=[CovTrac.loc[date]['positiveIncrease'] for date in daterange]
-savgolnewInf=signal.savgol_filter(newInf,51,5)
+savgolnewInf=signal.savgol_filter(newInf,51,7)
 
 # =============================================================================
 # Parameters
@@ -73,9 +73,9 @@ N=329450000 # Population size
 initInf = 100
 initCond1 = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 
-times=[0,18,40,65,100,106,118,123,145,155,tEnd]
+times=[0,18,40,65,100,106,118,123,137,150,tEnd]
 beta1List=[0.82]
-beta2List=[0,-0.0967,-0.017,0,.065,.03,-0.009,-0.0214,-0.02,-0.012]
+beta2List=[0,-0.0967,-0.017,0,.0675,.027,-0.009,-0.015,-0.031,-0.01]
 for i in range(len(beta2List)):    
     beta1List.append(beta1List[i]*np.exp(beta2List[i]*(times[i+1]-times[i])))
 
