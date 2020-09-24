@@ -58,7 +58,7 @@ sumCSSE = pureCSSE.sum(axis=0)
 
 daterange=[datetime.strftime(StartDateObj + timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd)]
 newInf=[CovTrac.loc[date]['positiveIncrease'] for date in daterange]
-savgolnewInf=signal.savgol_filter(newInf,51,7)
+savgolnewInf=signal.savgol_filter(newInf,51,5)
 
 # =============================================================================
 # Parameters
@@ -73,9 +73,9 @@ N=329450000 # Population size
 initInf = 100
 initCond1 = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 
-times=[0,18,40,65,100,106,118,123,137,150,tEnd]
+times=[0,18,40,65,100,106,118,123,137,150,160,tEnd]
 beta1List=[0.82]
-beta2List=[0,-0.0967,-0.017,0,.0675,.027,-0.009,-0.015,-0.031,-0.01]
+beta2List=[0,-0.0967,-0.017,0,.0675,.027,-0.009,-0.015,-0.031,-0.013,-0.0025]
 for i in range(len(beta2List)):    
     beta1List.append(beta1List[i]*np.exp(beta2List[i]*(times[i+1]-times[i])))
 
@@ -112,50 +112,62 @@ pnewCases = [ylists[2][n+1]-ylists[2][n]+ylists[3][n+1]-ylists[3][n] for n in ra
 # Plots and Prints
 # =============================================================================
 gsd= '3/1/20' # graph start date
-ged= '8/25/20' # graph end date
+ged= yesterday # graph end date
 show_EIR=0
 def replot(EIRswitch, GraphStartDate=gsd, GraphEndDate=ged):
+    # Dates and Date Ranges
     gsdObj=datetime.strptime(GraphStartDate,'%m/%d/%y')
     gedObj=datetime.strptime(GraphEndDate,'%m/%d/%y')
     rangeStart = (gsdObj-StartDateObj).days
-    rangeEnd = (gedObj-StartDateObj).days
+    rangeEnd = (gedObj-StartDateObj).days + 1
     gdr = daterange[rangeStart:rangeEnd] # graph date range
-
+    tlistlimit=tlists.T[rangeStart:rangeEnd]
     fig, (ax1,ax2) = plt.subplots(2,figsize=(20,12))
     plt.sca(ax1)
     plt.cla()
+    
     # Plotting EIR
     if EIRswitch==1:
         labels = ["Exposed", "Infected", "Recovered"]
         for y_arr, label in zip(ylists[1:], labels):
             ax1.plot(tlists.T[rangeStart:rangeEnd], y_arr[rangeStart:rangeEnd], label=label)
+    
     # Plotting I+R
     pIRList=ylists[2]+ylists[3]
-    ax1.plot(tlists.T[rangeStart:rangeEnd], pIRList[rangeStart:rangeEnd], label="Infected + Recovered")
-    ax1.plot(tlists.T[rangeStart:rangeEnd], sumCSSE[rangeStart:rangeEnd], label="Reported Cases")
+    ax1.plot(tlistlimit, pIRList[rangeStart:rangeEnd], label="Infected + Recovered")
+    ax1.plot(tlistlimit, sumCSSE[rangeStart:rangeEnd], label="Reported Cases")
     ax1.set_title('COVID19 Model 4 for US (SEIR, RK4)')
+    ax1.set_xlabel('Days since '+gsd)
+
+
     # Plotting New Cases
     ax2.plot(gdr, pnewCases[rangeStart:rangeEnd], label="pNew Cases(dI+dR)")
     ax2.plot(gdr, newInf[rangeStart:rangeEnd], label="Actual New Cases")
     ax2.plot(gdr, savgolnewInf[rangeStart:rangeEnd], label="savgol Actual New Cases")
     ax2.set_title('New Cases Per Day')
-    monthstartnum=[0,15,31,46,61,76,92,107,122,137,153,168]
-    monthstartdate=[daterange[n] for n in monthstartnum]
-     # Plot Config        
+    ax2.set_xlabel("Date")
+
+    
+    # Universal Formatting        
     for axes in [ax1,ax2]:
         plt.sca(axes)
         axes.legend(loc='best')
         axes.grid()
-        axes.set_xlabel('Date')
         axes.set_ylabel('People')
-    ax1.set_xticks(monthstartnum)
-    ax2.set_xticks(monthstartdate)
+    datenums=[0,15,31,46,61,76,92,107,122,137,153,168,184,199]
+    dateticks=[daterange[n] for n in datenums]
+    includeticknum=[tick for tick in datenums if tick in tlistlimit]
+    includetickdate = [tick for tick in dateticks if tick in gdr]
+    ax1.set_xticks(includeticknum)
+    ax2.set_xticks(includetickdate)
+
     # Logarithmic Graph
     ax1.set_yscale('log')
     plt.savefig('Graphs/CurvesForCOVID19_US_4_Logarithmic.png')
     # Linear Graph
     ax1.set_yscale('linear')
     plt.savefig('Graphs/CurvesForCOVID19_US_4.png')
+
 replot(show_EIR,gsd,ged)
 
 print("I+R")
