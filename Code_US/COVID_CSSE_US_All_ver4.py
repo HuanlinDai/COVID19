@@ -54,6 +54,8 @@ except KeyError:
     pureCovTrac = CovTrac.loc[StartDate:yesterday]
     tEnd-=1
 
+
+
 sumCSSE = pureCSSE.sum(axis=0)
 
 daterange=[datetime.strftime(StartDateObj + timedelta(days=x),'%#m/%#d/%y') for x in range(tEnd)]
