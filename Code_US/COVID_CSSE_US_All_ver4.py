@@ -75,9 +75,9 @@ N=329450000 # Population size
 initInf = 100
 initCond1 = [N-2.5*initInf,initInf*1.5,initInf,0] #Format: [S,E,I,R]
 
-times=[0,18,40,65,100,106,118,123,137,150,160,181,240,tEnd]
+times=[0,18,40,65,100,106,118,123,137,150,160,181,240,255,tEnd]
 beta1List=[0.82]
-beta2List=[0,-0.0967,-0.017,0,.0675,.027,-0.009,-0.015,-0.031,-0.013,-0.0025,0.0113,0.02]
+beta2List=[0,-0.0967,-0.017,0,.0675,.027,-0.009,-0.015,-0.031,-0.013,-0.0025,0.0113,0.015,-0.03]
 for i in range(len(beta2List)):    
     beta1List.append(beta1List[i]*np.exp(beta2List[i]*(times[i+1]-times[i])))
 
